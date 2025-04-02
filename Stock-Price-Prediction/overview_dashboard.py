@@ -3,7 +3,8 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
-from transformers import pipeline
+from transformers import pipeline 
+
 
 # === Technical Indicators ===
 def calculate_rsi(data, window=14):
@@ -49,9 +50,14 @@ def calculate_atr(df, window=14):
     return atr
 
 # === News Sentiment (FinBERT + NewsAPI) ===
+
+
+
 @st.cache_resource
 def load_sentiment_model():
-    return pipeline("sentiment-analysis", model="ProsusAI/finbert")
+    return pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english", framework="pt")
+
+
 
 def fetch_news_headlines(ticker, limit=10):
     api_key = "6f15cf7de3414430b24b88e64828f3ba"
