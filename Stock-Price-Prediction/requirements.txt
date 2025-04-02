@@ -1,11 +1,27 @@
+# Core Framework
 streamlit
-scikit-learn
-yfinance
-pandas
-ta
-xgboost
-streamlit
+
+# Data Handling
 pandas
 numpy
+yfinance
+
+# Visualization
+matplotlib
+plotly
+
+# Machine Learning
 scikit-learn
+xgboost
+
+# Deep Learning
+tensorflow
+
+# NLP & Sentiment
+textblob
+requests
+streamlit-autorefresh
 transformers
+
+# Optional if needed by your system
+--extra-index-url https://download.pytorch.org/whl/cpu
