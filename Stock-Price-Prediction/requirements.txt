@@ -4,3 +4,8 @@ yfinance
 pandas
 ta
 xgboost
+streamlit
+pandas
+numpy
+scikit-learn
+transformers
