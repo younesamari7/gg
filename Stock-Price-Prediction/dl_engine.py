@@ -9,10 +9,16 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, GRU, Dense, Dropout, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping
 
-
 def dl_forecast_engine():
     st.title("🚀 Deep Learning Forecast Engine | LSTM + GRU")
-    ticker = st.session_state.get("ticker", "AAPL")
+    
+    # Let the user choose the asset type and enter a ticker
+    asset_type = st.sidebar.selectbox("Select Asset Type", ["Stock", "Crypto"])
+    if asset_type == "Stock":
+        ticker = st.sidebar.text_input("Enter Stock Ticker", value="AAPL")
+    else:
+        ticker = st.sidebar.text_input("Enter Crypto Ticker", value="BTC-USD")
+        
     lookback = st.sidebar.slider("Lookback Window (Days)", 30, 120, 60)
     model_type = st.sidebar.selectbox("Model Type", ["LSTM", "GRU", "Bidirectional LSTM"])
 
@@ -35,6 +41,9 @@ def dl_forecast_engine():
 
     # Load and scale data
     df = yf.download(ticker, period="5y")
+    if df.empty:
+        st.error(f"No data found for ticker {ticker}. Please check the ticker symbol and try again.")
+        return
     data = df[['Close']].dropna()
     scaler = MinMaxScaler()
     scaled_data = scaler.fit_transform(data)
@@ -48,7 +57,7 @@ def dl_forecast_engine():
     x_train, y_train = np.array(x_train), np.array(y_train)
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
 
-    # Build selected model
+    # Build the selected model
     model = Sequential()
     if model_type == "LSTM":
         model.add(LSTM(64, return_sequences=False, input_shape=(x_train.shape[1], 1)))
@@ -74,7 +83,7 @@ def dl_forecast_engine():
     forecast_dates = pd.date_range(start=start_date, periods=forecast_days)
     forecast_df = pd.DataFrame({"Date": forecast_dates, "Predicted Price": forecast})
 
-    # Plot
+    # Plot the forecast
     st.subheader("📈 Forecast Chart")
     fig, ax = plt.subplots()
     ax.plot(df.index[-200:], df['Close'].iloc[-200:], label="Historical")
@@ -84,13 +93,11 @@ def dl_forecast_engine():
     ax.legend()
     st.pyplot(fig)
 
-    # Output
+    # Output the forecast table and provide a CSV download option
     st.subheader("📊 Forecast Table")
     st.dataframe(forecast_df)
-
     csv = forecast_df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download Forecast CSV", data=csv, file_name=f"{ticker}_{model_type.lower()}_forecast.csv", mime="text/csv")
 
-
 if __name__ == '__main__':
-    pass
+    dl_forecast_engine()
