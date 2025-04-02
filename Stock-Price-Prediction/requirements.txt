@@ -1,27 +1,27 @@
-# Core Framework
+# === Core Framework ===
 streamlit
+streamlit-autorefresh
 
-# Data Handling
+# === Data Handling ===
 pandas
 numpy
 yfinance
+requests
 
-# Visualization
+# === Visualization ===
 matplotlib
 plotly
 
-# Machine Learning
+# === Machine Learning ===
 scikit-learn
 xgboost
 
-# Deep Learning
+# === Deep Learning ===
 tensorflow
 
-# NLP & Sentiment
-textblob
-requests
-streamlit-autorefresh
+# === Natural Language Processing & Transformers ===
 transformers
+textblob
 
-# Optional if needed by your system
---extra-index-url https://download.pytorch.org/whl/cpu
+# === Optional Enhancements ===
+pillow
