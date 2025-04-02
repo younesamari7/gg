@@ -25,3 +25,4 @@ textblob
 
 # === Optional Enhancements ===
 pillow
+torch
