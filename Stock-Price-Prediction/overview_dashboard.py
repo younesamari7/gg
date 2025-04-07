@@ -3,10 +3,9 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
-from transformers import pipeline 
+from transformers import pipeline
 
-
-# === Technical Indicators ===
+# --- Technical Indicators ---
 def calculate_rsi(data, window=14):
     delta = data.diff()
     gain = delta.clip(lower=0)
@@ -46,32 +45,22 @@ def calculate_atr(df, window=14):
         abs(high - close.shift(1)),
         abs(low - close.shift(1))
     ], axis=1).max(axis=1)
-    atr = tr.rolling(window).mean()
-    return atr
-
-# === News Sentiment (FinBERT + NewsAPI) ===
-
-
+    return tr.rolling(window).mean()
 
 @st.cache_resource
 def load_sentiment_model():
     return pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english", framework="pt")
-
-
 
 def fetch_news_headlines(ticker, limit=10):
     api_key = "6f15cf7de3414430b24b88e64828f3ba"
     url = f"https://newsapi.org/v2/everything?q={ticker}&language=en&pageSize={limit}&apiKey={api_key}"
     response = requests.get(url)
     if response.status_code == 200:
-        articles = response.json().get("articles", [])
-        return [article["title"] for article in articles]
-    else:
-        return []
+        return [article["title"] for article in response.json().get("articles", [])]
+    return []
 
 def fetch_sentiment(ticker):
     headlines = fetch_news_headlines(ticker)
-
     if not headlines:
         return {"sentiment": "🟡 No News", "score": 0.0, "headlines": [], "distribution": {}}
 
@@ -94,11 +83,18 @@ def fetch_sentiment(ticker):
         "distribution": sentiment_scores
     }
 
-# === Main Dashboard ===
+# --- Main Dashboard ---
 def overview_dashboard():
     st.title("📊 Stock & Crypto Overview")
 
-    ticker_input = st.text_input("🔍 Enter Symbol (e.g., AAPL, TSLA, BTC-USD)", "AAPL")
+    st.markdown("Use the dropdown or type your own ticker (e.g. `AAPL`, `TSLA`, `BTC-USD`).")
+    col1, col2 = st.columns([2, 3])
+    with col1:
+        default_list = ["AAPL", "TSLA", "GOOGL", "AMZN", "BTC-USD", "ETH-USD"]
+        selected_default = st.selectbox("Popular Symbols", default_list, index=0)
+    with col2:
+        ticker_input = st.text_input("Or enter custom ticker", selected_default)
+
     ticker = ticker_input.strip().upper()
     st.session_state.ticker = ticker
 
@@ -114,26 +110,33 @@ def overview_dashboard():
         current_price = hist['Close'].iloc[-1]
         prev_close = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
         daily_change_pct = ((current_price - prev_close) / prev_close) * 100
-
         volume = info.get("volume", "N/A")
         market_cap = info.get("marketCap", "N/A")
 
+        # === Tabs View ===
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "📌 Snapshot", 
+            "📉 Technicals", 
+            "🧠 Sentiment", 
+            "🏢 Company Info"
+        ])
+
         # === Snapshot ===
-        st.subheader(f"📌 Snapshot: {ticker}")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Price", f"${current_price:.2f}")
-        col2.metric("Change", f"{daily_change_pct:.2f}%")
-        col3.metric("Volume", f"{volume:,}" if isinstance(volume, int) else "N/A")
-        col4.metric("Market Cap", f"${market_cap/1e9:.2f}B" if isinstance(market_cap, (int, float)) else "N/A")
+        with tab1:
+            st.subheader(f"Snapshot: {ticker}")
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Price", f"${current_price:.2f}")
+            col2.metric("Change", f"{daily_change_pct:.2f}%")
+            col3.metric("Volume", f"{volume:,}" if isinstance(volume, int) else "N/A")
+            col4.metric("Market Cap", f"${market_cap/1e9:.2f}B" if isinstance(market_cap, (int, float)) else "N/A")
 
-        # === Price Chart ===
-        st.markdown("### 📈 Price Chart (6 Months)")
-        st.line_chart(hist['Close'])
+            st.markdown("### 📈 Price Chart (6 Months)")
+            st.line_chart(hist['Close'])
 
-        # === Indicators ===
-        with st.expander("📊 Technical Indicators"):
+        # === Technical Indicators ===
+        with tab2:
+            st.subheader("📊 Technical Indicators")
             close = hist['Close']
-
             rsi = calculate_rsi(close)
             macd, signal = calculate_macd(close)
             upper, lower = calculate_bollinger_bands(close)
@@ -155,27 +158,28 @@ def overview_dashboard():
             st.markdown("**ATR (Volatility)**")
             st.line_chart(atr.dropna())
 
-        # === Sentiment ===
-        st.subheader("🧠 News Sentiment (FinBERT)")
-        result = fetch_sentiment(ticker)
+        # === Sentiment Analysis ===
+        with tab3:
+            st.subheader("🧠 News Sentiment (FinBERT)")
+            result = fetch_sentiment(ticker)
+            st.markdown(f"**Sentiment:** {result['sentiment']} ({result['score']:.2f})")
 
-        st.markdown(f"**Sentiment:** {result['sentiment']} ({result['score']:.2f})")
+            col_pos, col_neu, col_neg = st.columns(3)
+            col_pos.metric("Positive", result["distribution"].get("POSITIVE", 0))
+            col_neu.metric("Neutral", result["distribution"].get("NEUTRAL", 0))
+            col_neg.metric("Negative", result["distribution"].get("NEGATIVE", 0))
 
-        col_pos, col_neu, col_neg = st.columns(3)
-        col_pos.metric("Positive", result["distribution"].get("POSITIVE", 0))
-        col_neu.metric("Neutral", result["distribution"].get("NEUTRAL", 0))
-        col_neg.metric("Negative", result["distribution"].get("NEGATIVE", 0))
-
-        with st.expander("📰 Latest Headlines"):
-            for headline in result["headlines"]:
-                st.markdown(f"- {headline}")
+            with st.expander("📰 Latest Headlines"):
+                for headline in result["headlines"]:
+                    st.markdown(f"- {headline}")
 
         # === Info ===
-        st.subheader("🏢 Asset Info")
-        st.markdown(f"**Name:** {info.get('shortName', 'N/A')}")
-        st.markdown(f"**Sector:** {info.get('sector', 'N/A')}")
-        st.markdown(f"**Industry:** {info.get('industry', 'N/A')}")
-        st.markdown(f"**Website:** [{info.get('website', 'N/A')}]({info.get('website', '#')})")
+        with tab4:
+            st.subheader("🏢 Asset Info")
+            st.markdown(f"**Name:** {info.get('shortName', 'N/A')}")
+            st.markdown(f"**Sector:** {info.get('sector', 'N/A')}")
+            st.markdown(f"**Industry:** {info.get('industry', 'N/A')}")
+            st.markdown(f"**Website:** [{info.get('website', 'N/A')}]({info.get('website', '#')})")
 
     except Exception as e:
         st.error(f"⚠️ Error loading data for '{ticker}': {e}")

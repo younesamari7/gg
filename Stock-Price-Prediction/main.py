@@ -1,9 +1,9 @@
 import streamlit as st
 
-# ✅ Only ONE set_page_config, immediately after importing Streamlit
-st.set_page_config(page_title="AI Stock Forecasting Suite", layout="wide")
+# Set page configuration (MUST be first Streamlit command)
+st.set_page_config(page_title="AI Stock Forecasting Suite", layout="wide", page_icon="🚀")
 
-# ✅ Import other modules AFTER set_page_config
+# Import modular components
 from global_sidebar import global_sidebar
 from overview_dashboard import overview_dashboard
 from charts_technical_analysis import charts_technical_analysis
@@ -18,33 +18,49 @@ from exports_reports import exports_reports
 from user_settings import user_settings
 from about_help import about_help
 
-def main():
-    selected_page = global_sidebar()
+# Sidebar navigation
+st.sidebar.title("📊 Navigation")
+section = st.sidebar.radio("Go to", [
+    "Overview Dashboard",
+    "Charts & Technical Analysis",
+    "Fundamentals & Earnings",
+    "News & Sentiment",
+    "ML Forecast Engine",
+    "DL Forecast Engine",
+    "Backtesting Strategies",
+    "Portfolio Tracker",
+    "Alerts & Notifications",
+    "Exports & Reports",
+    "User Settings",
+    "About / Help"
+])
 
-    if selected_page == "Overview Dashboard":
+# App router
+def app():
+    if section == "Overview Dashboard":
         overview_dashboard()
-    elif selected_page == "Charts & Technical Analysis":
+    elif section == "Charts & Technical Analysis":
         charts_technical_analysis()
-    elif selected_page == "Fundamentals & Earnings":
+    elif section == "Fundamentals & Earnings":
         fundamentals_earnings()
-    elif selected_page == "News & Sentiment":
+    elif section == "News & Sentiment":
         news_sentiment()
-    elif selected_page == "ML Forecast Engine":
+    elif section == "ML Forecast Engine":
         ml_forecast_engine()
-    elif selected_page == "DL Forecast Engine":
+    elif section == "DL Forecast Engine":
         dl_forecast_engine()
-    elif selected_page == "Backtesting & Strategies":
+    elif section == "Backtesting Strategies":
         backtesting_strategies()
-    elif selected_page == "Portfolio Tracker":
+    elif section == "Portfolio Tracker":
         portfolio_tracker()
-    elif selected_page == "Alerts & Notifications":
+    elif section == "Alerts & Notifications":
         alerts_notifications()
-    elif selected_page == "Exports & Reports":
+    elif section == "Exports & Reports":
         exports_reports()
-    elif selected_page == "User Settings":
+    elif section == "User Settings":
         user_settings()
-    elif selected_page == "About & Help":
+    elif section == "About / Help":
         about_help()
 
 if __name__ == "__main__":
-    main()
+    app()
