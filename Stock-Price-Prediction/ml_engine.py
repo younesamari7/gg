@@ -41,6 +41,7 @@ def fetch_data(ticker, period="5y"):
     return df
 
 def forecast_prices(X, y, model, future_scaled):
+    y = np.asarray(y).flatten()   # Fix: ensure y is always 1D
     model.fit(X, y)
     preds = model.predict(future_scaled)
     y_pred_hist = model.predict(X)
@@ -154,7 +155,7 @@ def ml_forecast_engine():
                 n_jobs=-1,
                 scoring='neg_mean_squared_error'
             )
-            grid.fit(X_scaled, y)
+            grid.fit(X_scaled, np.asarray(y).flatten())
             model = grid.best_estimator_
             st.write("Best Random Forest parameters:", grid.best_params_)
         else:
