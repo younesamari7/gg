@@ -10,6 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
+from sklearn.model_selection import GridSearchCV
 try:
     from lightgbm import LGBMRegressor
 except ImportError:
@@ -95,6 +96,9 @@ def ml_forecast_engine():
         default=["Linear Regression", "XGBoost"]
     )
 
+    # Option to enable grid search for Random Forest
+    rf_grid_search = st.sidebar.checkbox("Grid Search for Random Forest", False)
+
     hybrid_mode = st.sidebar.checkbox("Enable Hybrid Prediction", True)
     weighted_hybrid = st.sidebar.checkbox("Use R²-Weighted Hybrid", True)
 
@@ -125,6 +129,15 @@ def ml_forecast_engine():
     if CatBoostRegressor:
         models["CatBoost"] = CatBoostRegressor(n_estimators=200, random_state=42, verbose=0)
 
+    # Parameter grid for Random Forest
+    param_grid = {
+        'n_estimators': [100, 300, 500],
+        'max_depth': [4, 8, 16, None],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 3, 5],
+        'max_features': ['auto', 'sqrt', 0.5]
+    }
+
     forecast_df = pd.DataFrame({"Date": future_dates})
     performance_records, preds_list, r2_scores = [], [], []
 
@@ -132,7 +145,21 @@ def ml_forecast_engine():
     fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="Historical", line=dict(color='blue')))
 
     for name in model_choices:
-        model = models[name]
+        # Grid search for Random Forest if enabled
+        if name == "Random Forest" and rf_grid_search:
+            grid = GridSearchCV(
+                RandomForestRegressor(random_state=42),
+                param_grid,
+                cv=3,
+                n_jobs=-1,
+                scoring='neg_mean_squared_error'
+            )
+            grid.fit(X_scaled, y)
+            model = grid.best_estimator_
+            st.write("Best Random Forest parameters:", grid.best_params_)
+        else:
+            model = models[name]
+
         preds, mse, mae, r2, dir_acc = forecast_prices(X_scaled, y, model, future_scaled)
         forecast_df[name] = preds
         performance_records.append({"Model": name, "MSE": mse, "MAE": mae, "R²": r2, "Direction_Accuracy": dir_acc})
