@@ -11,6 +11,13 @@ from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import plotly.graph_objects as go
 import plotly.express as px
 
+def direction_accuracy(y_true, y_pred):
+    """Calculate direction accuracy between true and predicted values."""
+    true_dir = np.sign(np.diff(y_true))
+    pred_dir = np.sign(np.diff(y_pred))
+    correct = (true_dir == pred_dir).sum()
+    return correct / len(true_dir) if len(true_dir) > 0 else np.nan
+
 def fetch_data(ticker, period="5y"):
     df = yf.download(ticker, period=period)[['Close']].dropna().reset_index()
     df['Date_ordinal'] = df['Date'].map(pd.Timestamp.toordinal)
@@ -23,7 +30,8 @@ def forecast_prices(X, y, model, future_scaled):
     mse = mean_squared_error(y, y_pred_hist)
     mae = mean_absolute_error(y, y_pred_hist)
     r2 = r2_score(y, y_pred_hist)
-    return preds, mse, mae, r2
+    dir_acc = direction_accuracy(y, y_pred_hist)
+    return preds, mse, mae, r2, dir_acc
 
 def ml_forecast_engine():
     st.title("🚀 Enhanced ML Stock Forecast Engine")
@@ -85,9 +93,9 @@ def ml_forecast_engine():
 
     for name in model_choices:
         model = models[name]
-        preds, mse, mae, r2 = forecast_prices(X_scaled, y, model, future_scaled)
+        preds, mse, mae, r2, dir_acc = forecast_prices(X_scaled, y, model, future_scaled)
         forecast_df[name] = preds
-        performance_records.append({"Model": name, "MSE": mse, "MAE": mae, "R²": r2})
+        performance_records.append({"Model": name, "MSE": mse, "MAE": mae, "R²": r2, "Direction_Accuracy": dir_acc})
         preds_list.append(np.array(preds).flatten())
         r2_scores.append(max(r2, 0))
         fig.add_trace(go.Scatter(x=future_dates, y=preds, name=name))
