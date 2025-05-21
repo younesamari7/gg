@@ -3,19 +3,35 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import timedelta, datetime
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.svm import SVR
+from sklearn.neighbors import KNeighborsRegressor
+try:
+    from lightgbm import LGBMRegressor
+except ImportError:
+    LGBMRegressor = None
+try:
+    from catboost import CatBoostRegressor
+except ImportError:
+    CatBoostRegressor = None
 import plotly.graph_objects as go
 import plotly.express as px
 
 def direction_accuracy(y_true, y_pred):
     """Calculate direction accuracy between true and predicted values."""
-    true_dir = np.sign(np.diff(y_true))
-    pred_dir = np.sign(np.diff(y_pred))
-    correct = (true_dir == pred_dir).sum()
+    y_true = np.asarray(y_true).flatten()
+    y_pred = np.asarray(y_pred).flatten()
+    min_len = min(len(y_true), len(y_pred))
+    if min_len < 2:
+        return np.nan
+    # Use only up to the shortest length
+    true_dir = np.sign(np.diff(y_true[:min_len]))
+    pred_dir = np.sign(np.diff(y_pred[:min_len]))
+    correct = np.sum(true_dir == pred_dir)
     return correct / len(true_dir) if len(true_dir) > 0 else np.nan
 
 def fetch_data(ticker, period="5y"):
@@ -58,9 +74,24 @@ def ml_forecast_engine():
         st.error("📅 Forecast period must be at least 1 day.")
         return
 
+    # Model choices for sidebar (add new models here)
+    model_options = [
+        "Linear Regression",
+        "Random Forest",
+        "XGBoost",
+        "SVR",
+        "KNN",
+        "Ridge",
+        "Lasso"
+    ]
+    if LGBMRegressor:
+        model_options.append("LightGBM")
+    if CatBoostRegressor:
+        model_options.append("CatBoost")
+
     model_choices = st.sidebar.multiselect(
         "🧠 ML Models",
-        ["Linear Regression", "Random Forest", "XGBoost"],
+        model_options,
         default=["Linear Regression", "XGBoost"]
     )
 
@@ -79,11 +110,20 @@ def ml_forecast_engine():
 
     y = df['Close'].values
 
+    # Initialize all models
     models = {
         "Linear Regression": LinearRegression(),
         "Random Forest": RandomForestRegressor(n_estimators=200, random_state=42),
-        "XGBoost": XGBRegressor(n_estimators=200, random_state=42, verbosity=0)
+        "XGBoost": XGBRegressor(n_estimators=200, random_state=42, verbosity=0),
+        "SVR": SVR(),
+        "KNN": KNeighborsRegressor(),
+        "Ridge": Ridge(),
+        "Lasso": Lasso()
     }
+    if LGBMRegressor:
+        models["LightGBM"] = LGBMRegressor(n_estimators=200, random_state=42)
+    if CatBoostRegressor:
+        models["CatBoost"] = CatBoostRegressor(n_estimators=200, random_state=42, verbose=0)
 
     forecast_df = pd.DataFrame({"Date": future_dates})
     performance_records, preds_list, r2_scores = [], [], []
