@@ -20,7 +20,6 @@ try:
 except ImportError:
     CatBoostRegressor = None
 import plotly.graph_objects as go
-import plotly.express as px
 
 def direction_accuracy(y_true, y_pred):
     """Calculate direction accuracy between true and predicted values."""
@@ -29,7 +28,6 @@ def direction_accuracy(y_true, y_pred):
     min_len = min(len(y_true), len(y_pred))
     if min_len < 2:
         return np.nan
-    # Use only up to the shortest length
     true_dir = np.sign(np.diff(y_true[:min_len]))
     pred_dir = np.sign(np.diff(y_pred[:min_len]))
     correct = np.sum(true_dir == pred_dir)
@@ -41,14 +39,14 @@ def fetch_data(ticker, period="5y"):
     return df
 
 def forecast_prices(X, y, model, future_scaled):
-    y = np.asarray(y).flatten()   # Fix: ensure y is always 1D
-    model.fit(X, y)
+    y_flat = np.asarray(y).flatten()  # ENSURE y is 1D
+    model.fit(X, y_flat)
     preds = model.predict(future_scaled)
     y_pred_hist = model.predict(X)
-    mse = mean_squared_error(y, y_pred_hist)
-    mae = mean_absolute_error(y, y_pred_hist)
-    r2 = r2_score(y, y_pred_hist)
-    dir_acc = direction_accuracy(y, y_pred_hist)
+    mse = mean_squared_error(y_flat, y_pred_hist)
+    mae = mean_absolute_error(y_flat, y_pred_hist)
+    r2 = r2_score(y_flat, y_pred_hist)
+    dir_acc = direction_accuracy(y_flat, y_pred_hist)
     return preds, mse, mae, r2, dir_acc
 
 def ml_forecast_engine():
@@ -76,7 +74,6 @@ def ml_forecast_engine():
         st.error("📅 Forecast period must be at least 1 day.")
         return
 
-    # Model choices for sidebar (add new models here)
     model_options = [
         "Linear Regression",
         "Random Forest",
@@ -97,9 +94,7 @@ def ml_forecast_engine():
         default=["Linear Regression", "XGBoost"]
     )
 
-    # Option to enable grid search for Random Forest
     rf_grid_search = st.sidebar.checkbox("Grid Search for Random Forest", False)
-
     hybrid_mode = st.sidebar.checkbox("Enable Hybrid Prediction", True)
     weighted_hybrid = st.sidebar.checkbox("Use R²-Weighted Hybrid", True)
 
@@ -115,7 +110,6 @@ def ml_forecast_engine():
 
     y = df['Close'].values
 
-    # Initialize all models
     models = {
         "Linear Regression": LinearRegression(),
         "Random Forest": RandomForestRegressor(n_estimators=200, random_state=42),
@@ -130,7 +124,6 @@ def ml_forecast_engine():
     if CatBoostRegressor:
         models["CatBoost"] = CatBoostRegressor(n_estimators=200, random_state=42, verbose=0)
 
-    # Parameter grid for Random Forest
     param_grid = {
         'n_estimators': [100, 300, 500],
         'max_depth': [4, 8, 16, None],
@@ -155,7 +148,7 @@ def ml_forecast_engine():
                 n_jobs=-1,
                 scoring='neg_mean_squared_error'
             )
-            grid.fit(X_scaled, np.asarray(y).flatten())
+            grid.fit(X_scaled, np.asarray(y).flatten())  # ENSURE y is 1D HERE
             model = grid.best_estimator_
             st.write("Best Random Forest parameters:", grid.best_params_)
         else:
